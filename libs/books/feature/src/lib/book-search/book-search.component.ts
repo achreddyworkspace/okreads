@@ -1,14 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import {
   addToReadingList,
   clearSearch,
   getAllBooks,
-  ReadingListBook,
-  searchBooks
+  searchBooks,
+  getReadingList,
+  ReadingListBook
 } from '@tmo/books/data-access';
 import { FormBuilder } from '@angular/forms';
-import { Book } from '@tmo/shared/models';
+import { Book, ReadingListItem } from '@tmo/shared/models';
 
 @Component({
   selector: 'tmo-book-search',
@@ -16,8 +19,9 @@ import { Book } from '@tmo/shared/models';
   styleUrls: ['./book-search.component.scss']
 })
 export class BookSearchComponent implements OnInit {
+  readingList: ReadingListItem[];
   books: ReadingListBook[];
-
+  destroy$: Subject<boolean> = new Subject<boolean>(); 
   searchForm = this.fb.group({
     term: ''
   });
@@ -32,9 +36,14 @@ export class BookSearchComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.select(getAllBooks).subscribe(books => {
+    this.store.select(getAllBooks).pipe(takeUntil(this.destroy$))
+    .subscribe(books => {
       this.books = books;
     });
+    this.store.select(getReadingList).pipe(takeUntil(this.destroy$))
+    .subscribe((list)=>{
+      this.readingList = list;
+    })
   }
 
   formatDate(date: void | string) {
@@ -58,5 +67,14 @@ export class BookSearchComponent implements OnInit {
     } else {
       this.store.dispatch(clearSearch());
     }
+  }
+
+  isFinished(i): boolean {
+      
+    return this.readingList.find((book)=>book.bookId === this.books[i].id) ? this.readingList.find((book)=>book.bookId === this.books[i].id).finished : false; 
+  }
+  isFinishedDate(i): any {
+      
+    return this.readingList.find((book)=>book.bookId === this.books[i].id) ? this.readingList.find((book)=>book.bookId === this.books[i].id).finishedDate : ""; 
   }
 }
